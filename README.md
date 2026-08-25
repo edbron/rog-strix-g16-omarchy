@@ -42,6 +42,11 @@ reboot
 `<file>.bak.<epoch>`. `./uninstall.sh` reverts it. You can apply one area at a
 time: `./install.sh audio sleep`.
 
+`check.sh` fingerprints your hardware first and only fails a check when the
+matching hardware is actually present, reporting `N/A` for anything that
+isn't. On a machine other than a G615JMR, expect mostly `N/A`, that's
+correct, not a bug: see [docs/hardware-detection.md](docs/hardware-detection.md).
+
 **Do the BIOS change too.** It is the single biggest win here and no script can
 do it for you: **[docs/bios.md](docs/bios.md)**.
 
@@ -49,18 +54,24 @@ do it for you: **[docs/bios.md](docs/bios.md)**.
 
 ## What gets fixed
 
-| Problem | Fix | Where |
-|---|---|---|
-| **Idles at 21.5 W, ~4 h on battery** | Disable Intel VMD in BIOS → **13.0 W, ~6.8 h** | [bios.md](docs/bios.md) *(manual)* |
-| Speakers dead after suspend, only a cold boot revives them | Force s2idle; never S3 | [suspend.md](docs/suspend.md) |
-| Warm in the bag after a long "suspend" | `suspend-then-hibernate`, 30 min | [suspend.md](docs/suspend.md) |
-| Hibernate resume fails with `-5` | Enable the four `nvidia-*.service` sleep units | [suspend.md](docs/suspend.md) |
-| Audio goes quiet or silent, keeps coming back | Remove the `soft-mixer` drop-in; let PipeWire own the mixer | [audio.md](docs/audio.md) |
-| Speakers crackle / drop out when idle | `snd_hda_intel power_save=0` + no WirePlumber idle-suspend | [audio.md](docs/audio.md) |
-| `asusctl aura ... --zone N` returns `NotSupported` | Patch the four zones into `aura_support.ron`, pinned by a pacman hook | [keyboard.md](docs/keyboard.md) |
-| Super key stops working | It's a firmware lock. Press **Fn+Super** (twice) | [keyboard.md](docs/keyboard.md) |
-| Keyboard is one flat colour per theme | Spread the theme across all four zones, re-applied at boot | [keyboard.md](docs/keyboard.md) |
-| Wi-Fi bar icon shows disconnected on a working link | NM profile missing `802-11-wireless.mode` | [network.md](docs/network.md) |
+The **Applies to** column is what `check.sh`/`install.sh` actually gate
+each fix on, not a guess. "This board" fixes stay narrow on purpose, see
+[ROADMAP.md](ROADMAP.md); everything else already targets the underlying
+hardware or software trait, not the ASUS badge, and will self-detect on
+other brands that share it.
+
+| Problem | Fix | Applies to | Where |
+|---|---|---|---|
+| **Idles at 21.5 W, ~4 h on battery** | Disable Intel VMD in BIOS → **13.0 W, ~6.8 h** | Any Intel laptop | [bios.md](docs/bios.md) *(manual)* |
+| Speakers dead after suspend, only a cold boot revives them | Force s2idle; never S3 | Any laptop with a TAS2781 amp | [suspend.md](docs/suspend.md) |
+| Warm in the bag after a long "suspend" | `suspend-then-hibernate`, 30 min | Any Intel HX-class CPU | [suspend.md](docs/suspend.md) |
+| Hibernate resume fails with `-5` | Enable the four `nvidia-*.service` sleep units | Any NVIDIA GPU | [suspend.md](docs/suspend.md) |
+| Audio goes quiet or silent, keeps coming back | Remove the `soft-mixer` drop-in; let PipeWire own the mixer | Any Realtek+ACP setup (self-checking) | [audio.md](docs/audio.md) |
+| Speakers crackle / drop out when idle | `snd_hda_intel power_save=0` + no WirePlumber idle-suspend | Any laptop with a TAS2781 amp | [audio.md](docs/audio.md) |
+| `asusctl aura ... --zone N` returns `NotSupported` | Patch the four zones into `aura_support.ron`, pinned by a pacman hook | This board (G615JMR) | [keyboard.md](docs/keyboard.md) |
+| Super key stops working | It's a firmware lock. Press **Fn+Super** (twice) | ASUS N-KEY keyboard | [keyboard.md](docs/keyboard.md) |
+| Keyboard is one flat colour per theme | Spread the theme across all four zones, re-applied at boot | This board (G615JMR) | [keyboard.md](docs/keyboard.md) |
+| Wi-Fi bar icon shows disconnected on a working link | NM profile missing `802-11-wireless.mode` | Any Omarchy install | [network.md](docs/network.md) |
 
 ---
 
@@ -94,7 +105,13 @@ will need your recovery key.
 ```
 install.sh          apply (idempotent, --dry-run supported, per-section)
 uninstall.sh        revert
-check.sh            read-only health check, exits non-zero if something is off
+check.sh            read-only health check, fingerprints the machine first and
+                     gates each check on whether the hardware it targets is
+                     present (N/A rather than FAIL on unrelated hardware),
+                     exits non-zero only if an applicable check is off
+
+lib/hardware-detect.sh   shared board/CPU/codec/keyboard/GPU detection, used
+                          by both install.sh and check.sh
 
 etc/                system files, installed to the same paths
   tmpfiles.d/zz-s2idle.conf
@@ -107,6 +124,7 @@ home/.local/bin/omarchy-theme-set-keyboard-zones
 home/.config/…      user files, installed under $HOME
 
 docs/               the reasoning, the dead ends, and how to diagnose a relapse
+  hardware-detection.md   how check.sh decides what applies to your machine
 ```
 
 Every config file carries its own rationale in comments. If you only take one
@@ -143,6 +161,12 @@ Four readings here are actively misleading. Each cost real time:
 If you have a G615-series Strix G16 and something here is wrong for your board,
 especially a different keyboard entry in `aura_support.ron`, or amps that behave
 differently across S4, please open an issue with the output of `./check.sh`.
+
+Running this on different hardware entirely, a different ASUS board or
+another brand, is also useful: `./check.sh` will mostly report `N/A`, and the
+fingerprint it prints (board, codec, amp, keyboard) is exactly what's needed
+to eventually extend `lib/hardware-detect.sh` to recognize your machine.
+See **[ROADMAP.md](ROADMAP.md)** for the staged plan to get there.
 
 One thing genuinely untested: **whether the TAS2781 amps survive a hibernate
 (S4) resume.** They do not survive S3. Hibernate *may* differ, because resume is

@@ -9,6 +9,15 @@ answers here are *convincing*.
 **Short version:** don't pin the mixer by hand. Remove the `soft-mixer`
 drop-in, keep the codec powered, and let PipeWire own the hardware mixer.
 
+**Scope:** the soft-mixer fix below is an ACP/PipeWire config problem, not
+specific to this codec, `install.sh` applies it on any hardware since it
+only acts if a matching drop-in exists. The power_save and idle-suspend
+fixes exist to protect the TAS2781 amps specifically, and apply to any
+laptop with that amp, ASUS or not, gated on `has_tas2781_amp` rather than
+on this exact codec. Only the codec-cache diagnostic near the end needs
+ALC294's exact DAC node addresses and stays specific to that. See
+[hardware-detection.md](hardware-detection.md).
+
 ---
 
 ## The root cause: `api.alsa.soft-mixer`

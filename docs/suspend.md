@@ -7,6 +7,13 @@ Three separate things had to be settled here:
    to. So it has to end in hibernation.
 3. Hibernate resume fails outright until four NVIDIA units are enabled.
 
+**Scope:** (1) applies to any laptop with a TAS2781 amp, gated on
+`has_tas2781_amp`, not on ASUS or this board. (2) applies to any laptop
+built on an Intel HX-class CPU (the "no S0ix" cause is the CPU die, not
+the board), gated on `is_no_s0ix_cpu`; the exact ~2.65 W number below is
+specific to this machine, the mechanism isn't. (3) applies to any NVIDIA
+GPU, already vendor-level. See [hardware-detection.md](hardware-detection.md).
+
 ---
 
 ## 1. Force s2idle: never deep/S3
